@@ -56,7 +56,6 @@
 #define FCB_QUALITY   0x02
 #define FCB_FAIL      0x04
 
-
 typedef struct _canfix_parameter {
 	uint16_t type;
 	uint8_t node;
@@ -68,33 +67,51 @@ typedef struct _canfix_parameter {
 } canfix_parameter;
 
 
-void canfix_init(uint8_t node, uint8_t device, uint8_t revision, uint32_t model);
-void canfix_set_description(char *description);
+typedef struct {
+    uint8_t node;
+    uint8_t device;
+    uint8_t revision;
+    uint32_t model;
+    char *description;
 
-void canfix_set_write_callback(int (*f)(uint16_t, uint8_t, uint8_t *));
-/* These two are for bit fields that are used by the library for long term storage
- * of parameter enables */
-void canfix_set_read_byte_callback(uint8_t (*f)(uint8_t));
-void canfix_set_write_byte_callback(void (*f)(uint8_t, uint8_t));
+    int (*write_callback)(uint16_t, uint8_t, uint8_t *);
+    void (*node_set_callback)(uint8_t);
+    void (*bitrate_callback)(uint8_t);
+    void (*report_callback)(void);
+    uint8_t (*twoway_callback)(uint8_t, uint16_t);
+    uint8_t (*config_callback)(uint16_t, uint8_t *, uint8_t);
+    uint8_t (*query_callback)(uint16_t, uint8_t *, uint8_t *);
+    void (*parameter_callback)(canfix_parameter);
+    void (*alarm_callback)(uint8_t, uint16_t, uint8_t*, uint8_t);
+    uint8_t (*firmware_callback)(uint16_t, uint8_t);
+    // void (*_stream_callback)(uint8_t, uint8_t *, uint8_t);
+} canfix_object;
 
-void canfix_set_node_set_callback(void (*f)(uint8_t));
-void canfix_set_alarm_callback(void (*f)(uint8_t, uint16_t, uint8_t*, uint8_t));
-void canfix_set_parameter_callback(void (*f)(canfix_parameter));
 
-void canfix_set_report_callback(void (*f)(void));
-void canfix_set_twoway_callback(uint8_t (*f)(uint8_t, uint16_t));
-void canfix_set_config_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t));
-void canfix_set_query_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t *));
-void canfix_set_firmware_callback(uint8_t (*f)(uint16_t, uint8_t));
+
+void canfix_init(canfix_object *h, uint8_t node, uint8_t device, uint8_t revision, uint32_t model);
+void canfix_set_description(canfix_object *h, char *description);
+
+void canfix_set_write_callback(canfix_object *h, int (*f)(uint16_t, uint8_t, uint8_t *));
+
+void canfix_set_node_set_callback(canfix_object *h, void (*f)(uint8_t));
+void canfix_set_alarm_callback(canfix_object *h, void (*f)(uint8_t, uint16_t, uint8_t*, uint8_t));
+void canfix_set_parameter_callback(canfix_object *h, void (*f)(canfix_parameter));
+
+void canfix_set_report_callback(canfix_object *h, void (*f)(void));
+void canfix_set_twoway_callback(canfix_object *h, uint8_t (*f)(uint8_t, uint16_t));
+void canfix_set_config_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t *, uint8_t));
+void canfix_set_query_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t *, uint8_t *));
+void canfix_set_firmware_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t));
 
 //void canfix_set_stream_callback(void (*f)(uint8_t, uint8_t *, uint8_t));
 
 
-void canfix_exec(uint16_t, uint8_t, uint8_t*);
+void canfix_exec(canfix_object *h, uint16_t, uint8_t, uint8_t*);
 
-int canfix_send_parameter(canfix_parameter par);
-void canfix_send_identification(uint8_t dest);
-int canfix_send_node_status(uint16_t ptype, uint8_t *data, uint8_t len);
+int canfix_send_parameter(canfix_object *h, canfix_parameter par);
+void canfix_send_identification(canfix_object *h, uint8_t dest);
+int canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t len);
 
 
 

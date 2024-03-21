@@ -24,103 +24,82 @@
 
 #include "canfix.h"
 
-static uint8_t _node;
-static uint8_t _device;
-static uint8_t _revision;
-static uint32_t _model;
-static char *_description;
-
-static int (*_write_callback)(uint16_t, uint8_t, uint8_t *);
-static uint8_t (*_read_byte_callback)(uint8_t);
-static void (*_write_byte_callback)(uint8_t, uint8_t);
-static void (*_node_set_callback)(uint8_t);
-static void (*_bitrate_callback)(uint8_t);
-static void (*_report_callback)(void);
-static uint8_t (*_twoway_callback)(uint8_t, uint16_t);
-static uint8_t (*_config_callback)(uint16_t, uint8_t *, uint8_t);
-static uint8_t (*_query_callback)(uint16_t, uint8_t *, uint8_t *);
-static void (*_parameter_callback)(canfix_parameter);
-static void (*_alarm_callback)(uint8_t, uint16_t, uint8_t*, uint8_t);
-static uint8_t (*_firmware_callback)(uint16_t, uint8_t);
-//static void (*_stream_callback)(uint8_t, uint8_t *, uint8_t);
-
-
-
 void
-canfix_init(uint8_t node, uint8_t device, uint8_t revision, uint32_t model) {
-	_node = node;
-	_device = device;
-	_revision = revision;
-	_model = model;
+canfix_init(canfix_object *h, uint8_t node, uint8_t device, uint8_t revision, uint32_t model) {
+	h->node = node;
+	h->device = device;
+	h->revision = revision;
+	h->model = model;
+
+	h->write_callback = NULL;
+    h->alarm_callback = NULL;
+    h->node_set_callback = NULL;
+    h->bitrate_callback = NULL;
+    h->report_callback = NULL;
+    h->twoway_callback = NULL;
+    h->config_callback = NULL;
+    h->query_callback = NULL;
+    h->parameter_callback = NULL;
+    h->alarm_callback = NULL;
+    h->firmware_callback = NULL;
 }
 
 /* Set's the node description string.  If this is set it will be sent after
    the Node Identification message is sent. */
-void canfix_set_description(char *description) {
-    _description = description;
+void canfix_set_description(canfix_object *h, char *description) {
+    h->description = description;
 }
 
 void
-canfix_set_write_callback(int (*f)(uint16_t, uint8_t, uint8_t *)) {
-	_write_callback = f;
+canfix_set_write_callback(canfix_object *h, int (*f)(uint16_t, uint8_t, uint8_t *)) {
+	h->write_callback = f;
 }
 
 void
-canfix_set_read_byte_callback(uint8_t (*f)(uint8_t)) {
-	_read_byte_callback = f;
+canfix_set_alarm_callback(canfix_object *h, void (*f)(uint8_t, uint16_t, uint8_t*, uint8_t)) {
+    h->alarm_callback = f;
 }
 
 void
-canfix_set_write_byte_callback(void (*f)(uint8_t, uint8_t)) {
-	_write_byte_callback = f;
-}
-
-
-void
-canfix_set_alarm_callback(void (*f)(uint8_t, uint16_t, uint8_t*, uint8_t)) {
-    _alarm_callback = f;
+canfix_set_parameter_callback(canfix_object *h, void (*f)(canfix_parameter)) {
+    h->parameter_callback = f;
 }
 
 void
-canfix_set_parameter_callback(void (*f)(canfix_parameter)) {
-    _parameter_callback = f;
+canfix_set_node_set_callback(canfix_object *h, void (*f)(uint8_t)) {
+    h->node_set_callback = f;
 }
 
 void
-canfix_set_node_set_callback(void (*f)(uint8_t)) {
-    _node_set_callback = f;
+canfix_set_report_callback(canfix_object *h, void (*f)(void)) {
+    h->report_callback = f;
 }
 
 void
-canfix_set_report_callback(void (*f)(void)) {
-    _report_callback = f;
+canfix_set_twoway_callback(canfix_object *h, uint8_t (*f)(uint8_t, uint16_t)) {
+    h->twoway_callback = f;
 }
 
 void
-canfix_set_twoway_callback(uint8_t (*f)(uint8_t, uint16_t)) {
-    _twoway_callback = f;
+canfix_set_config_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t *, uint8_t)) {
+    h->config_callback = f;
 }
 
 void
-canfix_set_config_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t)) {
-    _config_callback = f;
+canfix_set_query_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t *, uint8_t *)) {
+    h->query_callback = f;
 }
 
 void
-canfix_set_query_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t *)) {
-    _query_callback = f;
-}
-
-void
-canfix_set_firmware_callback(uint8_t (*f)(uint16_t, uint8_t)) {
-    _firmware_callback = f;
+canfix_set_firmware_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8_t)) {
+    h->firmware_callback = f;
 }
 
 //void canfix_set_stream_callback(void (*f)(uint8_t, uint8_t *, uint8_t));
 
 
 static void
-_handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
+_handle_node_specific(canfix_object *h, uint16_t id, uint8_t length, uint8_t *data) {
     uint8_t rlength;
     uint8_t rdata[8];
 
@@ -130,23 +109,23 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
 
     switch(data[0]) {
         case NSM_ID: // Node Identify Message
-            if(data[1] == _node || data[1]==0) {
-                canfix_send_identification(id - NSM_START);
+            if(data[1] == h->node || data[1]==0) {
+                canfix_send_identification(h, id - NSM_START);
                 return;
             } else {
                 return;
             }
             break;
         case NSM_BITRATE:
-            if(data[1] == _node || data[0]==0) {
+            if(data[1] == h->node || data[0]==0) {
                 if(data[2] >= 1 && data[2] <=4) {
-					if(_bitrate_callback) {
-						_bitrate_callback(data[2]);
+					if(h->bitrate_callback) {
+						h->bitrate_callback(data[2]);
 				    }
                 } else {
                     rdata[2] = 0x01;
                     rlength = 3;
-                    _write_callback(NSM_START + _node, rlength, rdata);
+                    h->write_callback(NSM_START + h->node, rlength, rdata);
                     return;
                 }
 
@@ -155,11 +134,11 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
             }
             break;
         case NSM_NODE_SET: // Node Set Message
-            if(data[1] == _node || data[0]==0) {
+            if(data[1] == h->node || data[0]==0) {
                 if(data[2] != 0x00) { // Doesn't respond to broadcast
-                    _node = data[2];
-                    if(_node_set_callback) {
-                        _node_set_callback(_node);
+                    h->node = data[2];
+                    if(h->node_set_callback) {
+                        h->node_set_callback(h->node);
                     }
                     rdata[2] = 0x00;
                 } else {
@@ -174,34 +153,34 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
            parameter is disabled.  A 0 in the bit location means enabled
            and a 1 means disabled. */
         case NSM_DISABLE:
-            if(data[1] == _node || data[1]==0) {
+            if(data[1] == h->node || data[1]==0) {
                 ; //parameterEnable(frame);
             }
             return;
         case NSM_ENABLE:
-            if(data[1] == _node) {
+            if(data[1] == h->node) {
                 ; //parameterEnable(frame);
             }
             return;
         case NSM_REPORT:
-            if(data[1] == _node || data[1]==0) {
-                if(_report_callback) _report_callback();
+            if(data[1] == h->node || data[1]==0) {
+                if(h->report_callback) h->report_callback();
             }
             return;
         case NSM_FIRMWARE: //Not implemented yet
-            if(data[1] == _node) {
-                if(_firmware_callback) {
+            if(data[1] == h->node) {
+                if(h->firmware_callback) {
                     /* Pass verification code and channel request */
-                    rdata[2] = _firmware_callback(*((uint16_t *)(&data[2])), data[4]);
+                    rdata[2] = h->firmware_callback(*((uint16_t *)(&data[2])), data[4]);
                     rlength = 3;
                     break;
                 }
             }
             return;
         case NSM_TWOWAY:
-            if(data[1] == _node) {
-                if(_twoway_callback && data[0]!=0x00) {
-                    if(_twoway_callback(data[2], *((uint16_t *)(&data[3]))) == 0) {
+            if(data[1] == h->node) {
+                if(h->twoway_callback && data[0]!=0x00) {
+                    if(h->twoway_callback(data[2], *((uint16_t *)(&data[3]))) == 0) {
                         rdata[2]=0x00;
                         rlength = 3;
                         break;
@@ -211,9 +190,9 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
                 return;
             }
         case NSM_CONFSET:
-            if(data[1] == _node) {
-                if(_config_callback) {
-                    rdata[2] = _config_callback(*((uint16_t *)(&data[2])), (uint8_t *)&data[4], length);
+            if(data[1] == h->node) {
+                if(h->config_callback) {
+                    rdata[2] = h->config_callback(*((uint16_t *)(&data[2])), (uint8_t *)&data[4], length);
                 } else {
                     rdata[2] = 1;
                 }
@@ -223,9 +202,9 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
                 return;
             }
         case NSM_CONFGET:
-            if(data[1] == _node) {
-                if(_query_callback) {
-                    rdata[2] = _query_callback(*((uint16_t *)(&data[2])), &rdata[3], &length);
+            if(data[1] == h->node) {
+                if(h->query_callback) {
+                    rdata[2] = h->query_callback(*((uint16_t *)(&data[2])), &rdata[3], &length);
                 } else {
                     rdata[2] = 1;
                 }
@@ -241,22 +220,22 @@ _handle_node_specific(uint16_t id, uint8_t length, uint8_t *data) {
         default:
             return;
     }
-    _write_callback(NSM_START + _node, rlength, rdata);
+    h->write_callback(NSM_START + h->node, rlength, rdata);
 }
 
 void
-canfix_exec(uint16_t id, uint8_t length, uint8_t *data) {
+canfix_exec(canfix_object *h, uint16_t id, uint8_t length, uint8_t *data) {
     uint8_t n;
     canfix_parameter par;
 
     if(id == 0x00) { /* Ignore ID 0 */
         ;
     } else if(id < 256) { /* Node Alarms */
-        if(_alarm_callback) {
-            _alarm_callback(id, *((uint16_t *)(&data[0])), &data[2], length-2);
+        if(h->alarm_callback) {
+            h->alarm_callback(id, *((uint16_t *)(&data[0])), &data[2], length-2);
         }
     } else if(id < 0x6E0) { /* Parameters */
-        if(_parameter_callback) {
+        if(h->parameter_callback) {
             par.type = id;
             par.node = data[0];
             par.index = data[1];
@@ -264,30 +243,30 @@ canfix_exec(uint16_t id, uint8_t length, uint8_t *data) {
             par.flags = data[2] & 0x0F;
             par.length = length - 3;
             for(n = 0; n<par.length; n++) par.data[n] = data[3+n];
-            _parameter_callback(par);
+            h->parameter_callback(par);
         }
     } else if(id < 0x7E0) { /* Node Specific Message */
-        _handle_node_specific(id, length, data);
+        _handle_node_specific(h,id, length, data);
     } else { /* Communication Channel */
         ; /* Not implemented at the moment */
     }
 }
 
 int
-canfix_send_parameter(canfix_parameter par) {
+canfix_send_parameter(canfix_object *h, canfix_parameter par) {
     /* TODO: Do some bounds checking */
     uint8_t data[8];
 
-    data[0] = _node;
+    data[0] = h->node;
     data[1] = par.index;
     data[2] = par.flags | (par.meta << 4);
     for(uint8_t n=0; n<5; n++) data[3+n] = par.data[n];
-    _write_callback(par.type, par.length+3, data);
+    h->write_callback(par.type, par.length+3, data);
 	return 0;
 }
 
 void
-canfix_send_identification(uint8_t dest) {
+canfix_send_identification(canfix_object *h, uint8_t dest) {
     uint8_t data[8];
     char c;
     int i, length;
@@ -297,21 +276,21 @@ canfix_send_identification(uint8_t dest) {
     data[0] = NSM_ID;
     data[1] = dest;
     data[2] = 1;
-    data[3] = _device;
-    data[4] = _revision;
-    memcpy(&data[5], &_model, 3);
-    _write_callback(_node + 0x6E0, 8, data);
+    data[3] = h->device;
+    data[4] = h->revision;
+    memcpy(&data[5], &h->model, 3);
+    h->write_callback(h->node + 0x6E0, 8, data);
 
     /* If we have a description string set then we'll send it here */
-    if(_description) {
+    if(h->description) {
         i = 0; packet = 0;
         done = false;
         data[0] = NSM_DESC;
-        length = strlen(_description);
+        length = strlen(h->description);
 
         while(! done) {
             if(i<length) {
-                c = _description[i];
+                c = h->description[i];
             } else {
                 c = '\0';
             }
@@ -320,7 +299,7 @@ canfix_send_identification(uint8_t dest) {
                 data[2] = packet;
                 data[3] = packet >> 8;
                 packet++;
-                _write_callback(_node + 0x6E0, 8, data);
+                h->write_callback(h->node + 0x6E0, 8, data);
                 if(c == '\0') done = true;
             }
             i++;
@@ -329,7 +308,7 @@ canfix_send_identification(uint8_t dest) {
 }
 
 int
-canfix_send_node_status(uint16_t ptype, uint8_t *data, uint8_t len) {
+canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t len) {
 	uint8_t buff[8];
 
 	if(len < 1 || len > 5) {
@@ -342,5 +321,5 @@ canfix_send_node_status(uint16_t ptype, uint8_t *data, uint8_t len) {
 	for(int n=0;n<len;n++) {
 		buff[3+n] = data[n];
 	}
-	return _write_callback(_node + 0x6E0, len+3, buff);
+	return h->write_callback(h->node + 0x6E0, len+3, buff);
 }
