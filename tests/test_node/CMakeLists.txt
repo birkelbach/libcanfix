@@ -14,29 +14,13 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-include(CheckIncludeFile)
-cmake_minimum_required(VERSION 3.10.2)
+# This is the CList file that takes care of all of the compartmentalized tests
+# Most of the tests are written in Python and use the ctypes module to
+# interface with the libraries.
 
-# This allows us to use VERSION in the project command
-cmake_policy(SET CMP0048 NEW)
-project(OpenDAX VERSION 0.7)
+# To run an individual test...
+# ctest -R <testname> -V
 
-set(BUILD_SHARED_LIBS ON)
+add_executable(test_node ../../src/canfix.c ../can.c main.c)
 
-enable_testing()
-
-set(CMAKE_BUILD_TYPE Debug)
-
-# check_include_file(string.h HAVE_STRING_H)
-
-# This is for the config.h file
-include_directories(${PROJECT_BINARY_DIR}/src)
-include_directories(src)
-
-add_subdirectory(src)
-
-add_subdirectory(tests)
-
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  message("Building Debug Symbols and Verbose Warnings")
-endif()
+#target_link_libraries(test_node pthread)

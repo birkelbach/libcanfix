@@ -21,6 +21,11 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
-add_executable(test_node ../src/canfix.c can.c test.c)
+#add_executable(test_node ../src/canfix.c can.c test.c)
 
-target_link_libraries(test_node pthread)
+#target_link_libraries(test_node pthread)
+
+add_subdirectory(test_node)
+add_subdirectory(switch_node)
+
+include_directories(.)

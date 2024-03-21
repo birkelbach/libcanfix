@@ -27,6 +27,7 @@
 
 // Node Specific Message Control Codes
 #define NSM_START    0x6E0
+#define CH_START     0x7E0
 
 #define NSM_ID       0
 #define NSM_BITRATE  1
@@ -68,6 +69,7 @@ typedef struct _canfix_parameter {
 
 
 void canfix_init(uint8_t node, uint8_t device, uint8_t revision, uint32_t model);
+void canfix_set_description(char *description);
 
 void canfix_set_write_callback(int (*f)(uint16_t, uint8_t, uint8_t *));
 /* These two are for bit fields that are used by the library for long term storage
@@ -83,6 +85,8 @@ void canfix_set_report_callback(void (*f)(void));
 void canfix_set_twoway_callback(uint8_t (*f)(uint8_t, uint16_t));
 void canfix_set_config_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t));
 void canfix_set_query_callback(uint8_t (*f)(uint16_t, uint8_t *, uint8_t *));
+void canfix_set_firmware_callback(uint8_t (*f)(uint16_t, uint8_t));
+
 //void canfix_set_stream_callback(void (*f)(uint8_t, uint8_t *, uint8_t));
 
 

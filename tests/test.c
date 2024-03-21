@@ -31,16 +31,12 @@ static uint8_t _tc_config[8];
 static void *
 _msg_thread(void *x) {
     struct can_frame frame;
-    canfix_frame cframe;
     int result;
 
     while(!_quitflag) {
         result = can_read(&frame);
         if(result > 0) {
-            cframe.id = frame.can_id;
-            cframe.length = frame.can_dlc;
-            memcpy(cframe.data, frame.data, 8);
-            canfix_exec(cframe);
+            canfix_exec(frame.can_id, frame.can_dlc, frame.data);
         }
     }
 }
@@ -54,12 +50,12 @@ _quit_signal(int sig)
 /* Callback function to the canfix library for sending a frame.  We
  * translate between the two structures and then call the can_write function */
 static int
-_write_frame(canfix_frame frame) {
+_write_frame(uint16_t id, uint8_t dlc, uint8_t *data) {
     struct can_frame sframe;
 
-    sframe.can_id = frame.id;
-    sframe.can_dlc = frame.length;
-    memcpy(sframe.data, frame.data, 8);
+    sframe.can_id = id;
+    sframe.can_dlc = dlc;
+    memcpy(sframe.data, data, 8);
     return can_write(sframe);
 }
 
@@ -101,6 +97,7 @@ main(int argc, const char *argv[]) {
     //struct can_frame frame;
     canfix_parameter par;
     int32_t altitude = -1000;
+    int ch;
 
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -112,7 +109,7 @@ main(int argc, const char *argv[]) {
 
 
     can_setup("vcan0");
-    canfix_init(0xA4, 0xA4, 1, 0x770001);
+    canfix_init(0x23, 0x23, 1, 0x770001);
     canfix_set_write_callback(_write_frame);
     canfix_set_node_set_callback(_node_set_callback);
     canfix_set_alarm_callback(_alarm_callback);

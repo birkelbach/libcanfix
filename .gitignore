@@ -42,3 +42,4 @@ doc/*
 doc/doxygen/*
 *.pyc
 build/
+a.out
