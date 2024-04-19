@@ -308,7 +308,7 @@ canfix_send_identification(canfix_object *h, uint8_t dest) {
 }
 
 int
-canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t len) {
+canfix_send_node_status(canfix_object *h, uint16_t ptype, void *data, uint8_t len) {
 	uint8_t buff[8];
 
 	if(len < 1 || len > 5) {
@@ -319,7 +319,7 @@ canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t
 	buff[1] = ptype;
 	buff[2] = ptype >> 8;
 	for(int n=0;n<len;n++) {
-		buff[3+n] = data[n];
+		buff[3+n] = ((uint8_t *)data)[n];
 	}
 	return h->write_callback(h->node + 0x6E0, len+3, buff);
 }

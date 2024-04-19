@@ -53,7 +53,7 @@
 #define NODESTAT_CANRX     4
 #define NODESTAT_CANTXERR  5
 #define NODESTAT_CANRXERR  6
-#define NODESTAT_RDACRX    256
+#define NODESTAT_CANRXOVR  7
 
 
 #define FCB_ANNUNC    0x01
@@ -150,7 +150,7 @@ void canfix_exec(canfix_object *h, uint16_t, uint8_t, uint8_t*);
 
 int canfix_send_parameter(canfix_object *h, canfix_parameter par);
 void canfix_send_identification(canfix_object *h, uint8_t dest);
-int canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t len);
+int canfix_send_node_status(canfix_object *h, uint16_t ptype, void *data, uint8_t len);
 
 #ifdef CANFIX_USE_QUEUE
 int canfix_queue_push(canfix_object *h, uint16_t id, uint8_t length, uint8_t *data);
