@@ -25,6 +25,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CANFIX_USE_QUEUE 1
+#define CANFIX_QUEUE_LEN 32
+
 // Node Specific Message Control Codes
 #define NSM_START    0x6E0
 #define CH_START     0x7E0
@@ -50,22 +53,52 @@
 #define NODESTAT_CANRX     4
 #define NODESTAT_CANTXERR  5
 #define NODESTAT_CANRXERR  6
+#define NODESTAT_RDACRX    256
 
 
 #define FCB_ANNUNC    0x01
 #define FCB_QUALITY   0x02
 #define FCB_FAIL      0x04
 
+#define CFG_ERR_UNKNOWN  1
+#define CFG_ERR_READONLY 2
+#define CFG_ERR_OUTOFRNG 3
+#define CFG_ERR_WRNGTYPE 4
+
+/* Convenience typdefs for the CANFiX data types */
+typedef char     canfix_char;
+typedef uint8_t  canfix_byte;
+typedef uint16_t canfix_word;
+typedef int8_t   canfix_short;
+typedef uint8_t  canfix_ushort;
+typedef int16_t  canfix_int;
+typedef uint16_t canfix_uint;
+typedef int32_t  canfix_dint;
+typedef uint32_t canfix_udint;
+typedef float    canfix_float;
+
 typedef struct _canfix_parameter {
-	uint16_t type;
-	uint8_t node;
-	uint8_t index;
+    uint16_t type;
+    uint8_t node;
+    uint8_t index;
     uint8_t meta;
-	uint8_t flags;
-	uint8_t data[5];
-	uint8_t length;
+    uint8_t flags;
+    uint8_t data[5];
+    uint8_t length;
 } canfix_parameter;
 
+
+#ifdef CANFIX_USE_QUEUE
+typedef struct {
+	uint16_t id;
+	uint8_t length;
+	uint8_t data[8];
+} canfix_frame;
+#endif
+
+
+#define CANFIX_QUEUE_OVERFLOW -1
+#define CANFIX_QUEUE_EMPTY -2
 
 typedef struct {
     uint8_t node;
@@ -73,6 +106,13 @@ typedef struct {
     uint8_t revision;
     uint32_t model;
     char *description;
+
+#ifdef CANFIX_USE_QUEUE
+    canfix_frame queue[CANFIX_QUEUE_LEN];
+    int head;
+    int tail;
+    int count;
+#endif
 
     int (*write_callback)(uint16_t, uint8_t, uint8_t *);
     void (*node_set_callback)(uint8_t);
@@ -106,13 +146,16 @@ void canfix_set_firmware_callback(canfix_object *h, uint8_t (*f)(uint16_t, uint8
 
 //void canfix_set_stream_callback(void (*f)(uint8_t, uint8_t *, uint8_t));
 
-
 void canfix_exec(canfix_object *h, uint16_t, uint8_t, uint8_t*);
 
 int canfix_send_parameter(canfix_object *h, canfix_parameter par);
 void canfix_send_identification(canfix_object *h, uint8_t dest);
 int canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t len);
 
+#ifdef CANFIX_USE_QUEUE
+int canfix_queue_push(canfix_object *h, uint16_t id, uint8_t length, uint8_t *data);
+int canfix_queue_pop(canfix_object *h, uint16_t *id, uint8_t *length, uint8_t *data);
+#endif
 
 
 #endif /* __CANFIX_H */

@@ -26,12 +26,12 @@
 
 void
 canfix_init(canfix_object *h, uint8_t node, uint8_t device, uint8_t revision, uint32_t model) {
-	h->node = node;
-	h->device = device;
-	h->revision = revision;
-	h->model = model;
+    h->node = node;
+    h->device = device;
+    h->revision = revision;
+    h->model = model;
 
-	h->write_callback = NULL;
+    h->write_callback = NULL;
     h->alarm_callback = NULL;
     h->node_set_callback = NULL;
     h->bitrate_callback = NULL;
@@ -119,9 +119,9 @@ _handle_node_specific(canfix_object *h, uint16_t id, uint8_t length, uint8_t *da
         case NSM_BITRATE:
             if(data[1] == h->node || data[0]==0) {
                 if(data[2] >= 1 && data[2] <=4) {
-					if(h->bitrate_callback) {
-						h->bitrate_callback(data[2]);
-				    }
+                    if(h->bitrate_callback) {
+                        h->bitrate_callback(data[2]);
+                    }
                 } else {
                     rdata[2] = 0x01;
                     rlength = 3;
@@ -323,3 +323,49 @@ canfix_send_node_status(canfix_object *h, uint16_t ptype, uint8_t *data, uint8_t
 	}
 	return h->write_callback(h->node + 0x6E0, len+3, buff);
 }
+
+
+#ifdef CANFIX_USE_QUEUE
+/* If the queue feature is enabled then this function is used to push a message onto the queue
+ * It will return CANFIX_QUEUE_OVERRUN if the queue is full in which case the oldest message on
+ * the queue will be over written and lost.  Otherwise it returns zero.
+ */
+int
+canfix_queue_push(canfix_object *h, uint16_t id, uint8_t length, uint8_t *data) {
+    h->queue[h->head].id = id;
+    h->queue[h->head].length = length;
+    for(int n=0; n < length; n++) {
+        h->queue[h->head].data[n] = data[n];
+    }
+    h->head++;
+    if(h->head == CANFIX_QUEUE_LEN) h->head = 0;
+    if(h->count == CANFIX_QUEUE_LEN) {
+        h->tail++;
+        if(h->tail == CANFIX_QUEUE_LEN) h->tail = 0;
+        return CANFIX_QUEUE_OVERFLOW;
+    }
+    else h->count++;
+    return 0;
+}
+
+/* If the queue feature is enabled then this function is used to execute the next message on the
+ * queue.  It returns CANFIX_QUEUE_EMPTY if nothing was done because the queue was empty and zero
+ * if canfix_exec() was called.
+ */
+int
+canfix_queue_pop(canfix_object *h, uint16_t *id, uint8_t *length, uint8_t *data) {
+    if(h->count == 0) return CANFIX_QUEUE_EMPTY;
+    *id = h->queue[h->tail].id;
+    *length = h->queue[h->tail].length;
+    for(int n=0; n < *length; n++) {
+        data[n] = h->queue[h->tail].data[n];
+    }
+
+    h->tail++;
+    if(h->tail == CANFIX_QUEUE_LEN) h->tail = 0;
+    h->count--;
+    return 0;
+}
+#endif
+
+
