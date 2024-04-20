@@ -192,7 +192,7 @@ _handle_node_specific(canfix_object *h, uint16_t id, uint8_t length, uint8_t *da
         case NSM_CONFSET:
             if(data[1] == h->node) {
                 if(h->config_callback) {
-                    rdata[2] = h->config_callback(*((uint16_t *)(&data[2])), (uint8_t *)&data[4], length);
+                    rdata[2] = h->config_callback(*((uint16_t *)(&data[2])), (uint8_t *)&data[4], length-4);
                 } else {
                     rdata[2] = 1;
                 }
